@@ -11,10 +11,10 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.lft.myoauthapp.api.GithubApi;
+import com.lft.myoauthapp.api.model.AccessToken;
 import com.lft.myoauthapp.api.model.RepoRequest;
 import com.lft.myoauthapp.api.model.RepoResponse;
-
-import java.util.ArrayList;
+import com.lft.myoauthapp.api.model.User;
 
 import javax.inject.Inject;
 
@@ -24,8 +24,13 @@ import butterknife.OnClick;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.Disposable;
 import io.reactivex.schedulers.Schedulers;
+import retrofit2.Retrofit;
+import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
+import retrofit2.converter.gson.GsonConverterFactory;
 
 public class RepoActivity extends AppCompatActivity {
+
+    public static final String TAG = "Debug";
 
     @BindView(R.id.et_repo_name)
     EditText etRepoName;
@@ -34,10 +39,12 @@ public class RepoActivity extends AppCompatActivity {
     @BindView(R.id.tv_repo_created)
     TextView tvRepoCreated;
     private TextView mTextView;
-    private String result;
 
     @Inject
     GithubApi mApi;
+
+    private String mToken;
+    private Disposable mDisposable;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,37 +52,50 @@ public class RepoActivity extends AppCompatActivity {
         setContentView(R.layout.activity_repo);
         ButterKnife.bind(this);
         AppDelegate.getAppComponent().inject(this);
-
         mTextView = findViewById(R.id.tv_holder);
 
-        mTextView.setText(getSharedPreferences("my_pref", MODE_PRIVATE).getString("accessCode", "null"));
-
-        addRepos(mTextView);
+        getAccessToken();
 
     }
-    private  String getToken(){
 
-        final String s = getSharedPreferences("my_pref", MODE_PRIVATE).getString("accessCode", "null").replace("code=", "");
-        Log.d("Debug", "getToken: " + s);
+    private void getAccessToken() {
+
+        Retrofit.Builder builder = new Retrofit.Builder()
+                .baseUrl(BuildConfig.LOGIN_URL)
+                .addConverterFactory(GsonConverterFactory.create())
+                .addCallAdapterFactory(RxJava2CallAdapterFactory.create());
+        Retrofit retrofit = builder.build();
+        GithubApi api = retrofit.create(GithubApi.class);
+
+        mDisposable = api.getAccessToken(BuildConfig.CLIENT_ID, BuildConfig.CLIENT_SECRET, getToken())
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .onErrorReturn(throwable -> new AccessToken())
+                .subscribe((accessToken, throwable) -> {
+                    mToken = accessToken.getTokenType() + " " + accessToken.getAccessToken();
+                    getUserInfo(mTextView);
+                });
+    }
+
+    private String getToken() {
+
+        final String s = getSharedPreferences("my_pref", MODE_PRIVATE)
+                .getString("accessCode", "null")
+                .replace("code=", "");
+        Log.d(TAG, "getToken: " + s);
         return s;
     }
 
-    private void addRepos(TextView textView) {
-        final Disposable subscribe = mApi.getRepos(getToken())
+    private void getUserInfo(TextView textView) {
+        mDisposable = mApi.getUserInfo(mToken)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
 
                 .onErrorReturn(throwable -> {
-                    Log.d("Debug", "addRepos: " + throwable.getMessage());
-                    return new ArrayList<>();
+                    Log.d(TAG, "getUserInfo: " + throwable.getMessage());
+                    return new User();
                 })
-                .subscribe(repoResponses -> {
-                    StringBuilder builder = new StringBuilder();
-                    for (RepoResponse response : repoResponses) {
-                        builder.append(response.getName() + "\n");
-                    }
-                    textView.setText(builder);
-                });
+                .subscribe(repoResponses -> textView.setText(repoResponses.getLogin()));
     }
 
     @OnClick({R.id.btn_create, R.id.tv_repo_created})
@@ -96,11 +116,11 @@ public class RepoActivity extends AppCompatActivity {
             request.setHomepage("");
             request.setPrivateX(false);
 
-            final Disposable subscribe = mApi.createRepo(getToken(),request)
+            mDisposable = mApi.createRepo(mToken, request)
                     .subscribeOn(Schedulers.io())
                     .observeOn(AndroidSchedulers.mainThread())
                     .onErrorReturn(throwable -> {
-                        Log.d("Debug", "addRepos: " + throwable.getMessage());
+                        Log.d(TAG, "getUserInfo: " + throwable.getMessage());
                         return new RepoResponse();
                     })
                     .subscribe(this::initSuccessUI);
@@ -115,5 +135,13 @@ public class RepoActivity extends AppCompatActivity {
         tvRepoCreated.setOnClickListener(v -> {
             Toast.makeText(this, "yay", Toast.LENGTH_SHORT).show();
         });
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (mDisposable != null)
+            mDisposable.dispose();
+        super.onDestroy();
+
     }
 }
