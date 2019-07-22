@@ -2,4 +2,5 @@
     <string name="app_name">MyOAuthApp</string>
     <string name="input_repo_name">Input repo name</string>
     <string name="create">create</string>
+    <string name="waiting">waiting...</string>
 </resources>

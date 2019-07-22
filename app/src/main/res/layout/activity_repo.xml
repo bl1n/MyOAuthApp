@@ -6,10 +6,7 @@
     android:orientation="vertical"
     tools:context=".RepoActivity">
 
-    <TextView
-        android:id="@+id/tv_holder"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+
 
     <EditText
         android:id="@+id/et_repo_name"

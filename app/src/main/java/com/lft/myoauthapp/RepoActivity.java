@@ -4,6 +4,8 @@ import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -38,13 +40,15 @@ public class RepoActivity extends AppCompatActivity {
     Button btnCreate;
     @BindView(R.id.tv_repo_created)
     TextView tvRepoCreated;
-    private TextView mTextView;
 
     @Inject
     GithubApi mApi;
 
+    Menu mMenu;
+
     private String mToken;
     private Disposable mDisposable;
+    private String userName;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,7 +56,6 @@ public class RepoActivity extends AppCompatActivity {
         setContentView(R.layout.activity_repo);
         ButterKnife.bind(this);
         AppDelegate.getAppComponent().inject(this);
-        mTextView = findViewById(R.id.tv_holder);
 
         getAccessToken();
 
@@ -73,36 +76,22 @@ public class RepoActivity extends AppCompatActivity {
                 .onErrorReturn(throwable -> new AccessToken())
                 .subscribe((accessToken, throwable) -> {
                     mToken = accessToken.getTokenType() + " " + accessToken.getAccessToken();
-                    getUserInfo(mTextView);
+                    getUserInfo();
                 });
     }
 
-    private String getToken() {
 
-        final String s = getSharedPreferences("my_pref", MODE_PRIVATE)
-                .getString("accessCode", "null")
-                .replace("code=", "");
-        Log.d(TAG, "getToken: " + s);
-        return s;
-    }
 
-    private void getUserInfo(TextView textView) {
+    private void getUserInfo() {
         mDisposable = mApi.getUserInfo(mToken)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
 
-                .onErrorReturn(throwable -> {
-                    Log.d(TAG, "getUserInfo: " + throwable.getMessage());
-                    return new User();
-                })
-                .subscribe(repoResponses -> textView.setText(repoResponses.getLogin()));
-    }
-
-    @OnClick({R.id.btn_create, R.id.tv_repo_created})
-    public void onViewClicked(View view) {
-        if (view.getId() == R.id.btn_create) {
-            createRepo();
-        }
+                .onErrorReturn(throwable -> new User())
+                .subscribe(repoResponses -> {
+                    mMenu.findItem(R.id.username)
+                            .setTitle(repoResponses.getLogin());
+                });
     }
 
     private void createRepo() {
@@ -129,12 +118,35 @@ public class RepoActivity extends AppCompatActivity {
         }
     }
 
+    private String getToken() {
+
+        final String s = getSharedPreferences("my_pref", MODE_PRIVATE)
+                .getString("accessCode", "null")
+                .replace("code=", "");
+        Log.d(TAG, "getToken: " + s);
+        return s;
+    }
+
+    @OnClick({R.id.btn_create, R.id.tv_repo_created})
+    public void onViewClicked(View view) {
+        if (view.getId() == R.id.btn_create) {
+            createRepo();
+        }
+    }
+
     private void initSuccessUI(RepoResponse repoResponse) {
         tvRepoCreated.setVisibility(View.VISIBLE);
         tvRepoCreated.setText(String.format("Repo was created: name %s\n url: %s", repoResponse.getName(), repoResponse.getHtmlUrl()));
         tvRepoCreated.setOnClickListener(v -> {
             Toast.makeText(this, "yay", Toast.LENGTH_SHORT).show();
         });
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.main_menu, menu);
+        mMenu = menu;
+        return true;
     }
 
     @Override

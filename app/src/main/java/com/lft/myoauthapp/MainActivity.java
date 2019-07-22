@@ -38,14 +38,15 @@ public class MainActivity extends AppCompatActivity {
 
                 if (url.contains(accessTokenFragment)) {
                     String accessToken = url.substring(url.indexOf(accessTokenFragment));
-                    Log.d("debug", "onPageStarted:1 " + accessToken);
                 } else if (url.contains(accessCodeFragment)) {
                     String accessCode = url.substring(url.indexOf(accessCodeFragment));
-                    Log.d("debug", "onPageStarted:2 " + accessCode);
                     String query = "client_id=" + clientId
                             + "&client_secret=" + clientSecret
                             + "&code=" + accessCode;
                     view.postUrl(OAUTH_ACCESS_TOKEN_URL, query.getBytes());
+
+
+
                     mSharedPrefEditor = getSharedPreferences("my_pref",MODE_PRIVATE).edit();
                     mSharedPrefEditor.putString("accessCode", accessCode);
                     mSharedPrefEditor.commit();
