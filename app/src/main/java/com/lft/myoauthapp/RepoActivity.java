@@ -1,9 +1,9 @@
 package com.lft.myoauthapp;
 
-import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -13,6 +13,8 @@ import android.widget.Toast;
 import com.lft.myoauthapp.api.GithubApi;
 import com.lft.myoauthapp.api.model.RepoRequest;
 import com.lft.myoauthapp.api.model.RepoResponse;
+
+import java.util.ArrayList;
 
 import javax.inject.Inject;
 
@@ -51,15 +53,21 @@ public class RepoActivity extends AppCompatActivity {
         addRepos(mTextView);
 
     }
+    private  String getToken(){
+
+        final String s = getSharedPreferences("my_pref", MODE_PRIVATE).getString("accessCode", "null").replace("code=", "");
+        Log.d("Debug", "getToken: " + s);
+        return s;
+    }
 
     private void addRepos(TextView textView) {
-        final Disposable subscribe = mApi.getRepos()
+        final Disposable subscribe = mApi.getRepos(getToken())
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .doOnError(throwable -> {
-                    result = throwable.getMessage();
-                    Toast.makeText(this, result, Toast.LENGTH_SHORT).show();
 
+                .onErrorReturn(throwable -> {
+                    Log.d("Debug", "addRepos: " + throwable.getMessage());
+                    return new ArrayList<>();
                 })
                 .subscribe(repoResponses -> {
                     StringBuilder builder = new StringBuilder();
@@ -78,7 +86,7 @@ public class RepoActivity extends AppCompatActivity {
     }
 
     private void createRepo() {
-        if(!TextUtils.isEmpty(etRepoName.getText())){
+        if (!TextUtils.isEmpty(etRepoName.getText())) {
             RepoRequest request = new RepoRequest();
             request.setName(etRepoName.getText().toString());
             request.setDescription("");
@@ -88,13 +96,12 @@ public class RepoActivity extends AppCompatActivity {
             request.setHomepage("");
             request.setPrivateX(false);
 
-            final Disposable subscribe = mApi.createRepo(request)
+            final Disposable subscribe = mApi.createRepo(getToken(),request)
                     .subscribeOn(Schedulers.io())
                     .observeOn(AndroidSchedulers.mainThread())
-                    .doOnError(throwable -> {
-                        result = throwable.getMessage();
-                        Toast.makeText(this, result, Toast.LENGTH_SHORT).show();
-
+                    .onErrorReturn(throwable -> {
+                        Log.d("Debug", "addRepos: " + throwable.getMessage());
+                        return new RepoResponse();
                     })
                     .subscribe(this::initSuccessUI);
 

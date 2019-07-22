@@ -54,35 +54,11 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         mWebView.loadUrl(url);
-//        Toast.makeText(this, , Toast.LENGTH_SHORT).show();
-
-
-
-
-        /*Intent intent = new Intent(Intent.ACTION_VIEW,
-                Uri.parse("https://github.com/login/oauth/authorize"
-                        + "?client_id=" + clientId
-                        + "&scope=repo&redirect_url=" + redirectUrl));
-        startActivity(intent);*/
-
-
     }
 
     @Override
     protected void onResume() {
         super.onResume();
 
-//        Uri uri = getIntent().getData();
-//
-//        if (uri != null && uri.toString().startsWith(redirectUrl)) {
-//
-//            String code = uri.getQueryParameter("code");
-//
-//            Intent intent = new Intent(this, RepoActivity.class);
-//            intent.putExtra("code", code);
-//            startActivity(intent);
-//
-//            Toast.makeText(this, "yay", Toast.LENGTH_SHORT).show();
-//        }
     }
 }
